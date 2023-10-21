@@ -12,7 +12,8 @@
 #include "../../KRAI_Library/CMPS12_KRAI/CMPS12_KRAI.h"
 
 
-#define PPR_CUI 100
+#define PPR_CUI_C 100
+#define PPR_CUI_D 2050
 
 static BufferedSerial serial_port(USBTX, USBRX, 115200);
 FileHandle *mbed::mbed_override_console(int fd)
@@ -21,8 +22,8 @@ FileHandle *mbed::mbed_override_console(int fd)
 }
 
 
-encoderKRAI enc1(F446RE_MASTER_ENCODER_A_C_A, F446RE_MASTER_ENCODER_A_C_B, PPR_CUI, Encoding::X4_ENCODING);
-encoderKRAI enc2(F446RE_MASTER_ENCODER_A_D_A, F446RE_MASTER_ENCODER_A_D_B, PPR_CUI, Encoding::X4_ENCODING);
+encoderKRAI enc1(F446RE_MASTER_ENCODER_A_A_A, F446RE_MASTER_ENCODER_A_A_B, PPR_CUI_C, Encoding::X4_ENCODING);
+encoderKRAI enc2(F446RE_MASTER_ENCODER_A_D_A, F446RE_MASTER_ENCODER_A_D_B, PPR_CUI_D, Encoding::X4_ENCODING);
 
 const float kel = 2 * 3.14f * 2.9f;
 float pulse1, rotation1;
@@ -44,14 +45,14 @@ int main()
         // Coba
         if(us_ticker_read() - curr > 50000){
             pulse1 = (float)(enc1.getPulses());
-            rotation1 = pulse1 / (PPR_CUI * 4);
+            rotation1 = pulse1 / (PPR_CUI_C);
             s1 = rotation1 * kel;
-            printf("PULSE: %d DISTANCE: %.3f cm", enc1.getPulses(), s1);
+            printf("PULSE: %d Distance: %.3f ", enc1.getPulses(), s1);
 
             pulse2 = (float)(enc2.getPulses());
-            rotation2 = pulse2 / (PPR_CUI * 4);
+            rotation2 = pulse2 / (PPR_CUI_D);
             s2 = rotation2 * kel;
-            printf("PULSE: %d DISTANCE: %.3f cm", enc2.getPulses(), s2);
+            printf("PULSE: %d Rotation: %.3f", enc2.getPulses(), rotation2);
 
             cmps.compassUpdateValue();
             printf("cmpsVal: %.2f Angle: %d Pitch: %d Roll: %d \n ", cmps.compassValue(), cmps.getAngle(), cmps.getPitch(), cmps.getRoll());

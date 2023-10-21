@@ -10,7 +10,7 @@
 #include "../../KRAI_Library/encoderKRAI/encoderKRAI.h"
 
 
-#define PPR_CUI 100
+#define PPR_CUI 2050
 
 static BufferedSerial serial_port(USBTX, USBRX, 115200);
 FileHandle *mbed::mbed_override_console(int fd)
@@ -19,7 +19,7 @@ FileHandle *mbed::mbed_override_console(int fd)
 }
 
 
-encoderKRAI enc(F446RE_MASTER_ENCODER_A_C_A, F446RE_MASTER_ENCODER_A_C_B, PPR_CUI, Encoding::X4_ENCODING);
+encoderHAL enc(F446RE_MASTER_ENCODER_A_D_A, F446RE_MASTER_ENCODER_A_D_B, PPR_CUI, Encoding::X4_ENCODING);
 
 const float kel = 2 * 3.14f * 2.9f;
 float pulse, rotation;
