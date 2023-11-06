@@ -6,6 +6,8 @@
 #include "../../KRAI_Library/pidLo/pidLo.h"
 #include "../../KRAI_Library/CMPS12_KRAI/CMPS12_KRAI.h"
 #include "../../KRAI_Library/JoystickPS3/JoystickPS3.h"
+#include "ExtraLibs/MovingAverage/MovingAverage.h"
+#include "ExtraLibs/FiveWheel/FiveWheel.h"
 // #include "../../KRAI_Library/Pinout/F446RE_MASTER_2022.h"
 
 // INITIALIZE SERIAL USING PRINTF 
@@ -51,6 +53,7 @@ int main(){
         if (serial_port.readable())
         {
             scanf("%f", &testSpeed);
+            FiveWheel.testSpeed(testSpeed);
         }
 
         if(us_ticker_read() - samplingBaseEncoder > SAMP_BASE_MOTOR_ENCODER_US){

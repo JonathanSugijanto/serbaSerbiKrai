@@ -20,6 +20,8 @@ add_executable(${APP_TARGET}
     ../../KRAI_Library/pidLo/pidLo.cpp
     ../../KRAI_Library/CMPS12_KRAI/CMPS12_KRAI.cpp
     ../../KRAI_Library/JoystickPS3/JoystickPS3.cpp
+    ExtraLibs/MovingAverage/MovingAverage.cpp
+    ExtraLibs/FiveWheel/FiveWheel.cpp
 )
 
 target_link_libraries(${APP_TARGET} mbed-os)
