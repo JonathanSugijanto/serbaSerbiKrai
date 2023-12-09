@@ -10,9 +10,10 @@ float Acc[3];
 float Gyro[3];
 float Mag[3];
 
+int16_t raw_Acc[3];
 int16_t raw_Mag[3];
 
-float MagTot, Zangle;
+float AccTot, Zangle;
 
 uint32_t timer1=0;
 
@@ -27,27 +28,27 @@ int main()
     printf("finished initializing");
     while(1){
         if(us_ticker_read() - timer1 > timeSampling){
-            // gy.Read_Accel(Acc);
+            gy.Read_Accel(Acc);
+            // gy.Read_Raw_Accel(raw_Acc);
             // gy.Read_Gyro(Gyro);
-            gy.Read_Magn(Mag);
-            // gy.Read_Raw_Magn(raw_Mag);
+            // gy.Read_Accn(Acc);
+            // gy.Read_Raw_Accn(raw_Acc);
 
             // for(int i=0; i<3; i++){
-            //     Mag[i]=(float)raw_Mag[i];
+            //     Acc[i]=(float)raw_Acc[i];
             // }
 
             // printf("AccX: %.2f AccY: %.2f AccZ: %.2f ", Acc[0], Acc[1], Acc[2]);
             // printf("GyroX: %.2f GyroY: %.2f GyroZ: %.2f ", Gyro[0], Gyro[1], Gyro[2]);
-            MagTot=sqrt(Mag[0]*Mag[0]+Mag[1]*Mag[1]+Mag[2]*Mag[2]);
-            // printf("MagX: %.2f MagY: %.2f MagZ: %.2f Mag: %.2f", Mag[0], Mag[1], Mag[2], MagTot);
-            // MagTot=sqrt((float)(raw_Mag[0]*raw_Mag[0]+raw_Mag[1]*raw_Mag[1]+raw_Mag[2]*raw_Mag[2]));
-            // printf("MagX: %d MagY: %d MagZ: %d Mag: %.2f", raw_Mag[0], raw_Mag[1], raw_Mag[2], MagTot);
+            AccTot=sqrt(Acc[0]*Acc[0]+Acc[1]*Acc[1]+Acc[2]*Acc[2]);
+            printf("AccX: %.2f AccY: %.2f AccZ: %.2f Acc: %.2f", Acc[0], Acc[1], Acc[2], AccTot);
+            // AccTot=sqrt((float)(raw_Acc[0]*raw_Acc[0]+raw_Acc[1]*raw_Acc[1]+raw_Acc[2]*raw_Acc[2]));
+            // printf("AccX: %d AccY: %d AccZ: %d Acc: %.2f", raw_Acc[0], raw_Acc[1], raw_Acc[2], AccTot);
 
-            Zangle = gy.No_Tilt_Compass();
-            printf("Zangle: %.2f Mag: %.2f MagX: %.2f MagY: %.2f MagZ: %.2f", Zangle, MagTot, Mag[0], Mag[1], Mag[2]);
+            // printf("Zangle: %.2f Acc: %.2f AccX: %.2f AccY: %.2f AccZ: %.2f", Zangle, AccTot, Acc[0], Acc[1], Acc[2]);
             printf("\n");
 
-            // gy.Cal_Magn();
+            // gy.Cal_Accn();
 
             timer1=us_ticker_read();
         }

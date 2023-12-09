@@ -14,6 +14,8 @@
 *   L3G4200D (3-Axis Angular Rate Sensor), I2C Address 0×69
 *       datasheet: https://www.elecrow.com/download/L3G4200_AN3393.pdf 
 *   BMP085 (Barometric Pressure / Temperature Sensor), I2C Address 0×77
+*
+*   library ini dibuat untuk aplikasi tilt-compensated compass dengan compass mengarah ke sumbu-X module
 *******************************************************************************/
 
 #ifndef _GY80_H_
@@ -39,12 +41,12 @@
 // Put MIN/MAX of the raw value read here
 // Accelerometer
 // "accel x,y,z (min/max) = X_MIN/X_MAX  Y_MIN/Y_MAX  Z_MIN/Z_MAX"
-#define ACCEL_X_MIN (-255.0f)
-#define ACCEL_X_MAX (260.0f)
-#define ACCEL_Y_MIN (-267.0f)
-#define ACCEL_Y_MAX (255.0f)
-#define ACCEL_Z_MIN (-278.0f)
-#define ACCEL_Z_MAX (238.0f)
+#define ACCEL_X_MIN (-249.0f)
+#define ACCEL_X_MAX (268.0f)
+#define ACCEL_Y_MIN (-253.0f)
+#define ACCEL_Y_MAX (268.0f)
+#define ACCEL_Z_MIN (-251.0f)
+#define ACCEL_Z_MAX (265.0f)
 
 // Magnetometer
 // "magn x,y,z (min/max) = X_MIN/X_MAX  Y_MIN/Y_MAX  Z_MIN/Z_MAX"
@@ -70,20 +72,21 @@
 
 // Gyroscope
 // "gyro x,y,z (current/average) = .../OFFSET_X  .../OFFSET_Y  .../OFFSET_Z
-#define GYRO_X_OFFSET (-20.5f)
-#define GYRO_Y_OFFSET (0.5f)
-#define GYRO_Z_OFFSET (10.5f)
+// #define GYRO_X_OFFSET (-20.5f)
+// #define GYRO_Y_OFFSET (0.5f)
+// #define GYRO_Z_OFFSET (10.5f)
 
 //*****************************************************************************/
 
 #define GRAVITY 255.0f  //this equivalent to 1G in the raw data coming from the accelerometer 
+#define G_TO_CMpS2 980.665f
 
 #define ACCEL_X_OFFSET ((ACCEL_X_MIN + ACCEL_X_MAX) / 2.0f)
 #define ACCEL_Y_OFFSET ((ACCEL_Y_MIN + ACCEL_Y_MAX) / 2.0f)
 #define ACCEL_Z_OFFSET ((ACCEL_Z_MIN + ACCEL_Z_MAX) / 2.0f)
-#define ACCEL_X_SCALE (GRAVITY / (ACCEL_X_MAX - ACCEL_X_OFFSET))
-#define ACCEL_Y_SCALE (GRAVITY / (ACCEL_Y_MAX - ACCEL_Y_OFFSET))
-#define ACCEL_Z_SCALE (GRAVITY / (ACCEL_Z_MAX - ACCEL_Z_OFFSET))
+#define ACCEL_X_SCALE (G_TO_CMpS2 * GRAVITY / 255.0f / (ACCEL_X_MAX - ACCEL_X_OFFSET))
+#define ACCEL_Y_SCALE (G_TO_CMpS2 * GRAVITY / 255.0f / (ACCEL_Y_MAX - ACCEL_Y_OFFSET))
+#define ACCEL_Z_SCALE (G_TO_CMpS2 * GRAVITY / 255.0f / (ACCEL_Z_MAX - ACCEL_Z_OFFSET))
 
 //base 
 #define MAGN_X_OFFSET ((MAGN_X_MIN + MAGN_X_MAX) / 2.0f)
@@ -103,13 +106,13 @@
 #endif
 
 // Gyro gain (conversion from raw to degree per seconds)
-#define GYRO_GAIN 0.061035156f
-#define GYRO_GAIN_X 0.061035156f //X axis Gyro gain
-#define GYRO_GAIN_Y 0.061035156f //Y axis Gyro gain
-#define GYRO_GAIN_Z 0.061035156f //Z axis Gyro gain
+// #define GYRO_GAIN 0.061035156f
+// #define GYRO_GAIN_X 0.061035156f //X axis Gyro gain
+// #define GYRO_GAIN_Y 0.061035156f //Y axis Gyro gain
+// #define GYRO_GAIN_Z 0.061035156f //Z axis Gyro gain
 
-#define DEG2RAD(x) (x * 0.01745329252)  // *pi/180
-#define RAD2DEG(x) (x * 57.2957795131)  // *180/pi
+// #define DEG2RAD(x) (x * 0.01745329252)  // *pi/180
+// #define RAD2DEG(x) (x * 57.2957795131)  // *180/pi
 #ifndef M_PI
 #define M_PI 3.14159265359f
 #endif
@@ -135,19 +138,29 @@ public:
 
     ~GY80();
 
+    /**Assume acceleration is always vertical down
+     * Combining compass and accelerometer data
+     * @param address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
+     * @see penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
+    */
+    void Compass(float* comp);
+
     /**Assume Z is always vertical up
-     * @return angle from where magnetic north is
+     * Using just the compass data:
+     * @return Z_angle from where magnetic north is
     */
     float No_Tilt_Compass();
 
     void Read_Accel(float* accel_v);
-    void Read_Gyro(float* gyro_v);
+    // void Read_Gyro(float* gyro_v);
 
     /**Read scalled magnetic field vector (100 for ambient magnetic field)
      * @param address of float array[3] for data x,y,z
      * @see based on "data magnet full.csv"
      */
     void Read_Magn(float* magn_v);
+
+    void Read_Raw_Accel(int16_t* accel_v);
 
     /**Read raw magnetic field vector
      * output in 1370 LSb/Ga uncallibrated
@@ -167,11 +180,11 @@ public:
     void Cal_Magn();
 
 private:
-    short accel[3];
-    short gyro[3];
+    int16_t accel[3];
+    // short gyro[3];
     int16_t mag[3];
     void Accel_Init();
-    void Gyro_Init();
+    // void Gyro_Init();
     void Magn_Init();
     bool b_verbose = false;
     void wait_ms(int t);
