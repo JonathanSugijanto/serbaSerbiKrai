@@ -48,7 +48,7 @@ int main()
             // scanf(" %c", &letter);
             // letter=getchar();
         }
-        if(now-timer1>50000){
+        if(now-timer1>500000){
             led1!=led1;
             printf("Hello, %c %.2f\n", letter, counting);
             counting++;

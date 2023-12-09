@@ -9,6 +9,8 @@ FileHandle *mbed::mbed_override_console(int fd){
 
 #define cmps_SDA PB_9 //SDA 1
 #define cmps_SCL PB_8 //SCL 1
+// #define cmps_SDA PB_3 //SDA 2
+// #define cmps_SCL PB_10 //SCL 2
 #define cmps_ADD 0xC0
 CMPS12_KRAI cmps(cmps_SDA, cmps_SCL, cmps_ADD);
 

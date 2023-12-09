@@ -40,51 +40,7 @@
 #define BASE_MID_KI 0.0f
 #define BASE_MID_KD 0.0f
 #define SAMP_PID_BASE_MOTOR_MS (SAMP_PID_BASE_MOTOR_US/1000.0)
-/**
- * Konstanta PID lama untuk braking
-*/
-#define BASE_BL_KP_BRAKE 1.50f
-#define BASE_BR_KP_BRAKE 1.60f
-#define BASE_FL_KP_BRAKE 1.70f
-#define BASE_FR_KP_BRAKE 1.60f
 
-/* BASE MOTOR SMC */
-/**
- * Konstanta SMC untuk berbagai situasi
-*/
-#define BASE_FL_SMC_KP 0.0028f
-#define BASE_FR_SMC_KP 0.004f
-#define BASE_BR_SMC_KP 0.0028f
-#define BASE_BL_SMC_KP 0.0033f
-
-#define BASE_FL_SMC_KP_BOOST 0.00055f
-#define BASE_FR_SMC_KP_BOOST 0.0085f
-#define BASE_BR_SMC_KP_BOOST 0.0023f
-#define BASE_BL_SMC_KP_BOOST 0.0015f
-
-#define BASE_FL_SMC_KP_BRAKE 2.0f
-#define BASE_FR_SMC_KP_BRAKE 2.5f
-#define BASE_BR_SMC_KP_BRAKE 2.2f
-#define BASE_BL_SMC_KP_BRAKE 2.2f
-
-#define BASE_FL_SMC_KP_MAX 0.001f
-#define BASE_FR_SMC_KP_MAX 0.001f
-#define BASE_BR_SMC_KP_MAX 0.001f
-#define BASE_BL_SMC_KP_MAX 0.001f
-
-#define SMC_FL_KSIGMA 10
-#define SMC_FR_KSIGMA 15
-#define SMC_BR_KSIGMA 10
-#define SMC_BL_KSIGMA 12
-
-#define SMC_FL_KSIGMA_BRAKE 50
-#define SMC_FR_KSIGMA_BRAKE 50
-#define SMC_BR_KSIGMA_BRAKE 50
-#define SMC_BL_KSIGMA_BRAKE 50
-
-#define SMC_EPSILON 0.01f
-#define SMC_BETA 1
-#define SMC_SAMPLING (SAMP_PID_BASE_MOTOR_US/1000000.0)
 
 /* BASE MOTOR CONTROL */
 // ga dipake tp jg dibutuhin bwt ControlMotor
