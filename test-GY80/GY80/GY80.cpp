@@ -6,6 +6,7 @@ GY80::GY80() : Wire( SDA,SCL)
     Accel_Init();
     // Gyro_Init();
     Magn_Init();
+    set_Angle(0.0f);
 }
 GY80::GY80(PinName sda_pin, PinName scl_pin) : Wire( sda_pin, scl_pin)
 {
@@ -13,14 +14,38 @@ GY80::GY80(PinName sda_pin, PinName scl_pin) : Wire( sda_pin, scl_pin)
     Accel_Init();
     // Gyro_Init();
     Magn_Init();
+    set_Angle(0.0f);
 }
 GY80::~GY80()
 {
 }
-void GY80::wait_ms(int t)
-{
-    wait_us(1000*t);
+
+float GY80::get_Angle(){
+    Compass_rel(compass);
+    return compass[0];
 }
+
+void GY80::set_Angle(float new_angle){
+    Compass(compass);
+    zero_angle_rel = compass[0] + new_angle;
+}
+
+float GY80::get_Pitch(){
+    Compass(compass);
+    return compass[1];
+}
+
+float GY80::get_Rotation(){
+    Compass(compass);
+    return compass[2];
+}
+
+void GY80::Compass_rel(float* comp){
+    Compass(comp);
+    comp[0] -= zero_angle_rel;
+    if(comp[0] < 0.0f) comp[0] += 360.0f;
+}
+
 void GY80::Accel_Init()
 {    
     byte data[2];
@@ -87,13 +112,39 @@ void GY80::Magn_Init()
     wait_ms(7);
 }
 
-float GY80::Compass(float* comp){
+void GY80::Compass(float* comp){
+    //measurement
     float ab[3]; //vector a in respect to b coordinate
     Read_Magn(ab);
     float bb[3]; //vector b in respect to b coordinate
     Read_Accel(bb);
 
-    float 
+    //find world unit vector
+    float xw[3], yw[3], zw[3]; //unit vector coordinate w in respect to b coordinate
+    v_unit(bb, zw); //find zw
+    v_cross_p(bb, ab, yw);//find yw
+    v_unit(yw,yw);
+    v_cross_p(yw, zw, xw); //find xw
+
+    //find roll pitch yaw (liat penurunannya di kertas for theory of operation)
+    float pitch = asin(- zw[0]);
+    float cpitch = cos(pitch);
+    float yaw = asin(zw[1] / cpitch);
+    if((cpitch * cos(yaw) / zw[2]) < 0.0f){
+        pitch = M_PI - pitch;
+    }
+    if(pitch > M_PI) pitch -= 2.0f * M_PI;
+    cpitch = cos(pitch);
+    float roll = asin(yw[0] / cpitch);
+    if((cos(roll) * cpitch / xw[0]) < 0.0f){
+        roll = M_PI - roll;
+    }
+    if(roll < 0.0f) roll += 2.0f * M_PI;
+    
+    //output
+    comp[0] = roll * RAD2DEG;
+    comp[1] = pitch * RAD2DEG;
+    comp[2] = yaw * RAD2DEG;
 }
 
 float GY80::No_Tilt_Compass(){
@@ -101,7 +152,7 @@ float GY80::No_Tilt_Compass(){
     Read_Magn(f_mag);
     float Zangle = - atan2(f_mag[1], f_mag[0]);
     if(Zangle<0) Zangle+=2.0f * M_PI;
-    Zangle*=180.0f/M_PI;
+    Zangle*= RAD2DEG;
     return Zangle;
 }
 
@@ -269,4 +320,30 @@ void GY80::Cal_Magn()
 
     //reset configuration
     Magn_Init();
+}
+
+void GY80::wait_ms(int t)
+{
+    wait_us(1000*t);
+}
+
+void GY80::v_cross_p(float* a, float* b, float* product){
+    for(int axis = 0; axis<3; axis++){
+        product[axis] = a[(axis+1)%3] * b[(axis+2)%3] - a[(axis+2)%3] * b[(axis+1)%3];
+    }
+}
+
+float GY80::v_length(float* vector){
+    float v_length_square = 0.0f;
+    for(int axis = 0; axis<3; axis++){
+        v_length_square += vector[axis] * vector[axis];
+    }
+    return sqrt(v_length_square);
+}
+
+void GY80::v_unit(float* vector, float* u_vector){
+    float length = v_length(vector);
+    for(int axis = 0; axis<3; axis++){
+        u_vector[axis] = vector[axis] / length;
+    }
 }

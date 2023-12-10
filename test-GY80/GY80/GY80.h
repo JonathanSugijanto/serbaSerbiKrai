@@ -15,6 +15,12 @@
 *       datasheet: https://www.elecrow.com/download/L3G4200_AN3393.pdf 
 *   BMP085 (Barometric Pressure / Temperature Sensor), I2C Address 0×77
 *
+*   technical spec:
+*   Supply Voltage: 3V – 5V
+*   Communication Mode: I2C
+*   Dimensions: 2.5 cm x 1.7 cm x 0.2 cm
+*   Weight: 31 g
+*   
 *   library ini dibuat untuk aplikasi tilt-compensated compass dengan compass mengarah ke sumbu-X module
 *******************************************************************************/
 
@@ -113,6 +119,7 @@
 
 // #define DEG2RAD(x) (x * 0.01745329252)  // *pi/180
 // #define RAD2DEG(x) (x * 57.2957795131)  // *180/pi
+#define RAD2DEG 57.2957795131f  // *180/pi
 #ifndef M_PI
 #define M_PI 3.14159265359f
 #endif
@@ -138,10 +145,43 @@ public:
 
     ~GY80();
 
+    /**Get relative Angle of module's X axis about the vertical axis of the world
+     * NOTE: if you want to get two of the angle, pitch, and yaw at once, it is reccomended to use Compass_rel() function instead
+     * @return relative angle in degrees from 0.0f to 360.0f
+     * tilt compensation uses Compass(float* comp) function
+     * @details simple combination of magnetometer and accelerometer
+    */
+    float get_Angle();
+    //set current relative Angle
+    void set_Angle(float new_angle); 
+
+    /**Get Pitch of module's X axis about the horizontal axis of the world
+     * @return Pitch in degrees from -180.0f to 180.0f
+     * tilt compensation uses Compass(float* comp) function
+     * @details simple combination of magnetometer and accelerometer
+    */
+    float get_Pitch();
+
+    /**Get Roll about the X axis of the module
+     * @return angle in degrees from 0.0f to 360.0f
+     * tilt compensation uses Compass(float* comp) function
+     * @details simple combination of magnetometer and accelerometer
+    */
+    float get_Rotation();
+
     /**Assume acceleration is always vertical down
-     * Combining compass and accelerometer data
+     * Combining compass and accelerometer data (with relative zero roll angle)\n
+     * only effective in the range (degrees): roll(0 - 360), pitch(-90 - 90), yaw
      * @param address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
-     * @see penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
+     * @details penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
+    */
+    void Compass_rel(float* comp);
+
+    /**Assume acceleration is always vertical down
+     * Combining compass and accelerometer data \n
+     * only effective in the range (degrees): roll(0 - 360), pitch(-90 - 90), yaw
+     * @param address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
+     * @details penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
     */
     void Compass(float* comp);
 
@@ -156,7 +196,7 @@ public:
 
     /**Read scalled magnetic field vector (100 for ambient magnetic field)
      * @param address of float array[3] for data x,y,z
-     * @see based on "data magnet full.csv"
+     * @details based on "data magnet full.csv"
      */
     void Read_Magn(float* magn_v);
 
@@ -178,17 +218,24 @@ public:
      * the output is in the form of printf,so the minmax value need to be changed manually in the definition
      */
     void Cal_Magn();
+    
 
 private:
     int16_t accel[3];
     // short gyro[3];
     int16_t mag[3];
+    float compass[3];
+
     void Accel_Init();
     // void Gyro_Init();
     void Magn_Init();
+    
+    float zero_angle_rel = 0.0f;
     bool b_verbose = false;
     void wait_ms(int t);
-
+    void v_cross_p(float* a, float* b, float* product); //return the cross product of a[3] and b[3]
+    float v_length(float* vector);
+    void v_unit(float* vector, float* u_vector);
 };
 
 #endif
