@@ -1,5 +1,6 @@
 /******************************************************************************
 *                           GY80 
+*               library oleh Jonathan Sugijanto
 *   GY80 adalah modul IMU dengan 10 DOF yang literally adalah gabungan 4 IC:
 *
 *   HMC5883L (3-Axis Digital Compass), I2C Address 0x1E
@@ -12,7 +13,7 @@
 *   ADXL345 (3-Axis Digital Accelerometer), I2C Address 0×53
 *       datasheet: https://www.analog.com/media/en/technical-documentation/data-sheets/adxl345.pdf 
 *   L3G4200D (3-Axis Angular Rate Sensor), I2C Address 0×69
-*       datasheet: https://www.elecrow.com/download/L3G4200_AN3393.pdf 
+*       datasheet: https://www.iot-lab.info/assets/misc/docs/iot-lab-m3/L3G4200D.pdf  
 *   BMP085 (Barometric Pressure / Temperature Sensor), I2C Address 0×77
 *
 *   technical spec:
@@ -21,7 +22,7 @@
 *   Dimensions: 2.5 cm x 1.7 cm x 0.2 cm
 *   Weight: 31 g
 *   
-*   library ini dibuat untuk aplikasi tilt-compensated compass dengan compass mengarah ke sumbu-X module
+*   library ini dibuat untuk aplikasi tilt-compensated compass (pengganti CMPS12) dengan compass mengarah ke sumbu-X module
 *******************************************************************************/
 
 #ifndef _GY80_H_
@@ -35,6 +36,8 @@
 #define I2C_FREQ 400000
 #define SCL PB_8
 #define SDA PB_9
+
+#define GYRO_WEIGHT 1.0f
 
 #define ACCEL_ADDRESS (0xA6) // 0x53 = 0xA6 / 2
 #define MAGN_ADDRESS_W  (0x3C) // 0x1E = 0x3C / 2
@@ -78,9 +81,9 @@
 
 // Gyroscope
 // "gyro x,y,z (current/average) = .../OFFSET_X  .../OFFSET_Y  .../OFFSET_Z
-// #define GYRO_X_OFFSET (-20.5f)
-// #define GYRO_Y_OFFSET (0.5f)
-// #define GYRO_Z_OFFSET (10.5f)
+#define GYRO_X_OFFSET (-27.39333333f)
+#define GYRO_Y_OFFSET (34.6f)
+#define GYRO_Z_OFFSET (4.303333333f)
 
 //*****************************************************************************/
 
@@ -112,13 +115,12 @@
 #endif
 
 // Gyro gain (conversion from raw to degree per seconds)
-// #define GYRO_GAIN 0.061035156f
-// #define GYRO_GAIN_X 0.061035156f //X axis Gyro gain
-// #define GYRO_GAIN_Y 0.061035156f //Y axis Gyro gain
-// #define GYRO_GAIN_Z 0.061035156f //Z axis Gyro gain
+#define GYRO_GAIN 0.061035156f
+#define GYRO_GAIN_X 0.061035156f //X axis Gyro gain
+#define GYRO_GAIN_Y 0.061035156f //Y axis Gyro gain
+#define GYRO_GAIN_Z 0.061035156f //Z axis Gyro gain
 
-// #define DEG2RAD(x) (x * 0.01745329252)  // *pi/180
-// #define RAD2DEG(x) (x * 57.2957795131)  // *180/pi
+#define DEG2RAD 0.01745329252f  // *pi/180
 #define RAD2DEG 57.2957795131f  // *180/pi
 #ifndef M_PI
 #define M_PI 3.14159265359f
@@ -134,14 +136,16 @@ public:
     /** Create GY80 inteface
      * @param sda_pin mbed pin to use for I2C SDA
      * @param scl_pin mbed pin to use for I2C SCL
+     * @param timeSampling: in us, 10000 is good (2 deg/min gyro drift)
      */
-    GY80();
+    GY80(int timeSampling);
     
     /** Create GY80 inteface
      * @param sda_pin mbed pin to use for I2C SDA
      * @param scl_pin mbed pin to use for I2C SCL
+     * @param timeSampling: in us, 10000 is good (2 deg/min gyro drift)
      */
-    GY80(PinName sda_pin, PinName scl_pin);
+    GY80(PinName sda_pin, PinName scl_pin, int timeSampling);
 
     ~GY80();
 
@@ -170,29 +174,42 @@ public:
     float get_Rotation();
 
     /**Assume acceleration is always vertical down
-     * Combining compass and accelerometer data (with relative zero roll angle)\n
-     * only effective in the range (degrees): roll(0 - 360), pitch(-90 - 90), yaw
-     * @param address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
+     * Combining compass and accelerometer data (with relative zero roll angle)
+     * only effective in the range (degrees): roll(0 - 360), pitch(-180 - 180), yaw(-90 - 90)
+     * @param comp address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
      * @details penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
     */
     void Compass_rel(float* comp);
 
-    /**Assume acceleration is always vertical down
-     * Combining compass and accelerometer data \n
-     * only effective in the range (degrees): roll(0 - 360), pitch(-90 - 90), yaw
-     * @param address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
+    /**Compass function version 2
+     * Simple weighted average of gyroscope and magnetometer-accelerometer
+     * Note: this function needs sampling!
+     * only effective in the range (degrees): roll(0 - 360), pitch(-180 - 180), yaw(-90 - 90)
+     * @param comp address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
      * @details penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
     */
     void Compass(float* comp);
 
-    /**Assume Z is always vertical up
-     * Using just the compass data:
+    void Sampling();
+
+    /**Compass function version 1
+     * Assume acceleration is always vertical down
+     * Combining compass and accelerometer data, doesn't need sampling
+     * only effective in the range (degrees): roll(0 - 360), pitch(-180 - 180), yaw(-90 - 90)
+     * @param address of float array[3] for data roll (Z angle), pitch (inclination), yaw (rotation about the module's X)
+     * @details penurunan: https://drive.google.com/drive/folders/1PRHnzby6aZBDhad5YUobmHNFptBi6PaO?usp=sharing 
+    */
+    void Compass_No_Gyro(float* comp);
+
+    /**Compass function version 0
+     * Assume Z is always vertical up
+     * Using just the compass data, doesn't need sampling
      * @return Z_angle from where magnetic north is
     */
-    float No_Tilt_Compass();
+    float Compass_No_Tilt();
 
     void Read_Accel(float* accel_v);
-    // void Read_Gyro(float* gyro_v);
+    void Read_Gyro(float* gyro_v);
 
     /**Read scalled magnetic field vector (100 for ambient magnetic field)
      * @param address of float array[3] for data x,y,z
@@ -201,6 +218,7 @@ public:
     void Read_Magn(float* magn_v);
 
     void Read_Raw_Accel(int16_t* accel_v);
+    void Read_Raw_Gyro(int16_t* gyro_v);
 
     /**Read raw magnetic field vector
      * output in 1370 LSb/Ga uncallibrated
@@ -222,20 +240,29 @@ public:
 
 private:
     int16_t accel[3];
-    // short gyro[3];
+    int16_t gyro[3];
     int16_t mag[3];
     float compass[3];
 
+    float omega[3];
+    float up1[3], north1[3]; //unit vector of up and north in respect to module using accelerometer-magnetometer
+    float up2[3], north2[3]; //unit vector of up and north in respect to module using gyroscope
+    float up[3], north[3]; //unit vector of up and north in respect to module
+
     void Accel_Init();
-    // void Gyro_Init();
+    void Gyro_Init();
     void Magn_Init();
     
     float zero_angle_rel = 0.0f;
     bool b_verbose = false;
+    int timeSampling = 10000;
+
     void wait_ms(int t);
     void v_cross_p(float* a, float* b, float* product); //return the cross product of a[3] and b[3]
     float v_length(float* vector);
     void v_unit(float* vector, float* u_vector);
+    void v_gyro_update(float* prev_v, float* curr_v);
+    void find_roll_pitch_yaw();
 };
 
 #endif
