@@ -21,6 +21,11 @@
 *   Communication Mode: I2C
 *   Dimensions: 2.5 cm x 1.7 cm x 0.2 cm
 *   Weight: 31 g
+*
+*   library spec:
+*   update rate: 75 Hz max (magnetometer max update rate)
+*   minimal efective timeSampling: 1250 us (gyro max update rate: 800 Hz)
+*   Calibrated for 5V supply only
 *   
 *   library ini dibuat untuk aplikasi tilt-compensated compass (pengganti CMPS12) dengan compass mengarah ke sumbu-X module
 *******************************************************************************/
@@ -37,7 +42,7 @@
 #define SCL PB_8
 #define SDA PB_9
 
-#define GYRO_WEIGHT 1.0f
+#define GYRO_WEIGHT 0.99f //gyro to magnetometer-accelerometer weighted average ratio
 
 #define ACCEL_ADDRESS (0xA6) // 0x53 = 0xA6 / 2
 #define MAGN_ADDRESS_W  (0x3C) // 0x1E = 0x3C / 2
@@ -115,10 +120,10 @@
 #endif
 
 // Gyro gain (conversion from raw to degree per seconds)
-#define GYRO_GAIN 0.061035156f
-#define GYRO_GAIN_X 0.061035156f //X axis Gyro gain
-#define GYRO_GAIN_Y 0.061035156f //Y axis Gyro gain
-#define GYRO_GAIN_Z 0.061035156f //Z axis Gyro gain
+#define GYRO_GAIN 0.07f //based on datasheet, or 0.061035156f based on max min range
+#define GYRO_GAIN_X 0.07f //X axis Gyro gain
+#define GYRO_GAIN_Y 0.07f //Y axis Gyro gain
+#define GYRO_GAIN_Z 0.07f //Z axis Gyro gain
 
 #define DEG2RAD 0.01745329252f  // *pi/180
 #define RAD2DEG 57.2957795131f  // *180/pi
@@ -191,6 +196,9 @@ public:
     void Compass(float* comp);
 
     void Sampling();
+
+    void ex_Sampling();
+    void ex_Compass(float* speed, float* comp);
 
     /**Compass function version 1
      * Assume acceleration is always vertical down

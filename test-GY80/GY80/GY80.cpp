@@ -19,6 +19,10 @@ GY80::GY80(PinName sda_pin, PinName scl_pin, int timeSampling) : Wire( sda_pin, 
 
     this->timeSampling = timeSampling;
     this->set_Angle(0.0f);
+
+    for(int axis = 0; axis<3; axis++){
+        this->compass[axis] = 0.0f;
+    }
 }
 GY80::~GY80()
 {
@@ -86,7 +90,7 @@ void GY80::Gyro_Init()
 
 
     data[0] = 0x23; // L3G4200D_CTRL_REG4
-    data[1] = 0x20; //00100000, note: 00xx0000 with xx being the user selectable full scale (00: 250 dps, 01: 500 dps, 1x: 2000 dps)
+    data[1] = 0x20; //00100000, note: 00xx0000 with xx being the user selectable full scale (00: 250 dps, 01: 500 dps, 1x: 2000 dps (70 mdps/digit))
     Wire.write(GYRO_ADDRESS, data, 2);
     this->wait_ms(1);
 
@@ -142,10 +146,23 @@ void GY80::Sampling(){
         //weighted average
         this->north[axis] = (1.0f - GYRO_WEIGHT) * this->north1[axis] + GYRO_WEIGHT * this->north2[axis];
         this->up[axis] = (1.0f - GYRO_WEIGHT) * this->up1[axis] + GYRO_WEIGHT * this->up2[axis];
+    }
 
-        //normalisasi vektor
-        this->v_unit(this->north,this->north);
-        this->v_unit(this->up,this->up);
+    //normalisasi vektor
+    this->v_unit(this->north,this->north);
+    this->v_unit(this->up,this->up);
+}
+
+void GY80::ex_Sampling(){
+    this->Read_Gyro(this->omega);
+    for(int axis = 0; axis<3; axis++){
+        this->compass[axis] -= this->omega[axis] * (float)(this->timeSampling) / 1000000.0f * RAD2DEG;
+    }
+}
+void GY80::ex_Compass(float* speed, float* comp){
+    for(int axis = 0; axis<3; axis++){
+        speed[axis] = this->omega[axis];
+        comp[axis] = this->compass[axis];
     }
 }
 
@@ -372,7 +389,7 @@ void GY80::v_gyro_update(float* prev_v, float* curr_v){
 
     //find current angle
     for(int axis = 0; axis<3; axis++){
-        theta[axis] -= this->omega[axis] * this->timeSampling / 1000000.0f;
+        theta[axis] -= this->omega[axis] * (float)(this->timeSampling) / 1000000.0f;
     }
 
     //find curr_v
@@ -391,6 +408,7 @@ void GY80::find_roll_pitch_yaw(){
         zw[axis] = this->up[axis];
     }
     this->v_cross_p(this->up, this->north, yw);//find yw
+    this->v_unit(yw, yw);
     this->v_cross_p(yw, zw, xw); //find xw
     
     //find roll pitch yaw

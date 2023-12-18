@@ -2,10 +2,11 @@
 #include "GY80/GY80.h"
 
 #define timeSampling 100000
-#define timeSamp 10000
+#define timeSamp 2000
 
-GY80 gy(PB_9,PB_8,10000);
+GY80 gy(PB_9,PB_8,timeSamp);
 
+float Speed[3];
 float Angle[3];
 float Gyro[3];
 
@@ -21,11 +22,13 @@ FileHandle *mbed::mbed_override_console(int fd){
 
 int main()
 {
-    gy.set_b_verbose(true);
+    // gy.set_b_verbose(true);
     while(1){
         if(us_ticker_read() - timer1 > timeSampling){
             // gy.Compass_rel(Angle);
+            // gy.ex_Compass(Speed, Angle);
             gy.Compass(Angle);
+            // printf("Sx: %.1f Sy: %.1f Sz: %.1f ", Speed[0], Speed[1], Speed[2]);
             printf("Roll: %.1f Pitch: %.1f Yaw: %.1f", Angle[0], Angle[1], Angle[2]);
 
             // gy.Read_Gyro(Gyro);
@@ -43,6 +46,7 @@ int main()
         }
 
         if(us_ticker_read() - timer2 > timeSamp){
+            // gy.ex_Sampling();
             gy.Sampling();
             timer2 = us_ticker_read();
         }
