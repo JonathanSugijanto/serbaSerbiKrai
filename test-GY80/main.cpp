@@ -2,13 +2,15 @@
 #include "GY80/GY80.h"
 
 #define timeSampling 100000
-#define timeSamp 2000
+#define timeSamp 15000
 
 GY80 gy(PB_9,PB_8,timeSamp);
 
 float Speed[3];
 float Angle[3];
 float Gyro[3];
+float Mag[3];
+float Angle1[3];
 
 float tot;
 
@@ -26,10 +28,15 @@ int main()
     while(1){
         if(us_ticker_read() - timer1 > timeSampling){
             // gy.Compass_rel(Angle);
-            // gy.ex_Compass(Speed, Angle);
             gy.Compass(Angle);
+            // gy.ex_Compass(Speed, Angle);
+            // gy.ex1_Compass(Angle);
+            // gy.Compass_No_Gyro(Angle);
             // printf("Sx: %.1f Sy: %.1f Sz: %.1f ", Speed[0], Speed[1], Speed[2]);
             printf("Roll: %.1f Pitch: %.1f Yaw: %.1f", Angle[0], Angle[1], Angle[2]);
+            // printf("RollG: %.1f RollM: %.1f PitchG: %.1f PitchM: %.1f YawG: %.1f YawM: %.1f", Angle[0], Angle1[0], Angle[1], Angle1[1], Angle[2], Angle1[2]);
+
+            // gy.Read_Magn(Gyro);
 
             // gy.Read_Gyro(Gyro);
             // for(int i = 0; i<3 ; i++){
@@ -47,6 +54,7 @@ int main()
 
         if(us_ticker_read() - timer2 > timeSamp){
             // gy.ex_Sampling();
+            // gy.ex1_Sampling();
             gy.Sampling();
             timer2 = us_ticker_read();
         }

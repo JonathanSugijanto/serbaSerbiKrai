@@ -42,7 +42,8 @@
 #define SCL PB_8
 #define SDA PB_9
 
-#define GYRO_WEIGHT 0.99f //gyro to magnetometer-accelerometer weighted average ratio
+#define GYRO_WEIGHT 0.8f //gyro to magnetometer-accelerometer weighted average ratio
+#define AVG_COUNT 5
 
 #define ACCEL_ADDRESS (0xA6) // 0x53 = 0xA6 / 2
 #define MAGN_ADDRESS_W  (0x3C) // 0x1E = 0x3C / 2
@@ -123,13 +124,14 @@
 #define GYRO_GAIN 0.07f //based on datasheet, or 0.061035156f based on max min range
 #define GYRO_GAIN_X 0.07f //X axis Gyro gain
 #define GYRO_GAIN_Y 0.07f //Y axis Gyro gain
-#define GYRO_GAIN_Z 0.07f //Z axis Gyro gain
+#define GYRO_GAIN_Z 0.175f //Z axis Gyro gain (0.175?)
 
 #define DEG2RAD 0.01745329252f  // *pi/180
 #define RAD2DEG 57.2957795131f  // *180/pi
 #ifndef M_PI
 #define M_PI 3.14159265359f
 #endif
+#define ERROR_TOL (20.0f * DEG2RAD)
 
 typedef char byte;
 
@@ -200,6 +202,9 @@ public:
     void ex_Sampling();
     void ex_Compass(float* speed, float* comp);
 
+    void ex1_Sampling();
+    void ex1_Compass(float* comp);
+
     /**Compass function version 1
      * Assume acceleration is always vertical down
      * Combining compass and accelerometer data, doesn't need sampling
@@ -256,6 +261,9 @@ private:
     float up1[3], north1[3]; //unit vector of up and north in respect to module using accelerometer-magnetometer
     float up2[3], north2[3]; //unit vector of up and north in respect to module using gyroscope
     float up[3], north[3]; //unit vector of up and north in respect to module
+    uint32_t up_timer[3], north_timer[3];
+    float compassBuffer[AVG_COUNT][3];
+    uint32_t count = 0;
 
     void Accel_Init();
     void Gyro_Init();
@@ -269,8 +277,8 @@ private:
     void v_cross_p(float* a, float* b, float* product); //return the cross product of a[3] and b[3]
     float v_length(float* vector);
     void v_unit(float* vector, float* u_vector);
-    void v_gyro_update(float* prev_v, float* curr_v);
-    void find_roll_pitch_yaw();
+    void v_gyro_update(float* prev_v, float* curr_v, uint32_t* timer);
+    void find_roll_pitch_yaw(float* v_north, float* v_up, float* v_compass);
 };
 
 #endif

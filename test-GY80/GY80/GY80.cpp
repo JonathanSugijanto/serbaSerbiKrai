@@ -39,7 +39,19 @@ void GY80::set_Angle(float new_angle){
     this->v_unit(this->north, this->north);
     this->Read_Accel(this->up);
     this->v_unit(this->up, this->up);
-    this->find_roll_pitch_yaw();
+    this->find_roll_pitch_yaw(this->north, this->up, this->compass);
+
+    for(int axis = 0; axis<3; axis++){
+        this->north_timer[axis] = us_ticker_read();
+        this->up_timer[axis] = us_ticker_read();
+    }
+
+    for(int i = 0; i<AVG_COUNT; i++){
+        for(int j = 0; j<3; j++){
+            compassBuffer[i][j] = 0.0f;
+        }
+    }
+
     this->zero_angle_rel = this->compass[0] + new_angle;
 }
 
@@ -107,7 +119,7 @@ void GY80::Magn_Init()
     //note: bit 0-1: measurement mode (00 normal)
     //      bit 2-4: Data output rate for continuous mode (100 for 15Hz (default), 110 for 75Hz (fastest))
     //      bit 5-6: "NUmber of samples averaged per measurement output" (00 for 1 (default), 01 for 2, 10 for 4, 11 for 8)
-    data[1] = 0x50; // 01010000 Set Moving Average of the last 4 data with 15Hz data rate
+    data[1] = 0x78; // 01111000 Set Moving Average of the last 8 data with 75Hz data rate
     Wire.write(MAGN_ADDRESS_W, data, 2);
     this->wait_ms(1);
 
@@ -126,21 +138,27 @@ void GY80::Magn_Init()
 }
 
 void GY80::Compass(float* comp){
-    this->find_roll_pitch_yaw();
+    this->find_roll_pitch_yaw(this->north, this->up, this->compass);
     for(int axis = 0; axis<3; axis++){
         comp[axis] = this->compass[axis];
     }  
+    // float junk[3];
+    // Read_Accel(junk);
+    // v_unit(junk, junk);
+    // printf("Xup: %.2f XupG: %.2f Yup: %.2f YupG: %.2f Zup: %.2f ZupG: %.2f ", junk[0], this->up[0], junk[1], this->up[1], junk[2], this->up[2]);
 }
 
 void GY80::Sampling(){
     //magnetometer-accelerometer contribution
     this->Read_Magn(this->north1);
+    this->v_unit(this->north1, this->north1);
     this->Read_Accel(this->up1);
+    this->v_unit(this->up1, this->up1);
 
     //gyroscope contribution
     this->Read_Gyro(this->omega);
-    this->v_gyro_update(this->north, this->north2);
-    this->v_gyro_update(this->up, this->up2);
+    this->v_gyro_update(this->north, this->north2, this->north_timer);
+    this->v_gyro_update(this->up, this->up2, this->up_timer);
     
     for(int axis = 0; axis<3; axis++){
         //weighted average
@@ -166,14 +184,57 @@ void GY80::ex_Compass(float* speed, float* comp){
     }
 }
 
-void GY80::Compass_No_Gyro(float* comp){
-    this->Read_Magn(this->north);
-    this->v_unit(this->north, this->north);
-    this->Read_Accel(this->up);
-    this->v_unit(this->up, this->up);
-    this->find_roll_pitch_yaw();
+void GY80::ex1_Sampling(){
+    float v_north[3], v_up[3], v_compass[3];
+    this->Read_Magn(v_north);
+    this->v_unit(v_north, v_north);
+    this->Read_Accel(v_up);
+    this->v_unit(v_up, v_up);
+    this->find_roll_pitch_yaw(v_north, v_up, v_compass);
+    
     for(int axis = 0; axis<3; axis++){
-        comp[axis] = this->compass[axis];
+        this->compassBuffer[this->count % AVG_COUNT][axis] = v_compass[axis];
+    }
+    this->count++;
+}
+void GY80::ex1_Compass(float* comp){
+    float max[3], min[3], range[3];
+    for(int axis = 0; axis<3; axis++){
+        max[axis] = this->compassBuffer[0][axis];
+        min[axis] = this->compassBuffer[0][axis];
+        for(int Count = 1; Count<AVG_COUNT; Count++){
+            if(max[axis] < this->compassBuffer[Count][axis]) max[axis] = this->compassBuffer[Count][axis];
+            if(min[axis] > this->compassBuffer[Count][axis]) min[axis] = this->compassBuffer[Count][axis];
+        }
+        range[axis] = max[axis] - min[axis];
+    } 
+
+    float TOT_result[3] = {0.0f, 0.0f, 0.0f};
+    for(int axis = 0; axis<3; axis++){
+        for(int Count = 0; Count<AVG_COUNT; Count++){
+            if(range[axis] > 180.0f && this->compassBuffer[Count][axis]>180.0f){
+                TOT_result[axis] += this->compassBuffer[Count][axis] - 360.0f;
+            } else{
+                TOT_result[axis] += this->compassBuffer[Count][axis];
+            }
+        }
+        if(range[axis] > 180.0f && TOT_result[axis] < 0.0f){
+            comp[axis] = TOT_result[axis] / (float)AVG_COUNT + 360.0f;
+        } else{
+            comp[axis] = TOT_result[axis] / (float)AVG_COUNT;
+        }
+    }   
+}
+
+void GY80::Compass_No_Gyro(float* comp){
+    float v_north[3], v_up[3], v_compass[3];
+    this->Read_Magn(v_north);
+    this->v_unit(v_north, v_north);
+    this->Read_Accel(v_up);
+    this->v_unit(v_up, v_up);
+    this->find_roll_pitch_yaw(v_north, v_up, v_compass);
+    for(int axis = 0; axis<3; axis++){
+        comp[axis] = v_compass[axis];
     }    
 }
 
@@ -380,7 +441,7 @@ void GY80::v_unit(float* vector, float* u_vector){
     }
 }
 
-void GY80::v_gyro_update(float* prev_v, float* curr_v){
+void GY80::v_gyro_update(float* prev_v, float* curr_v, uint32_t* timer){
     //find previous angle
     float theta[3];
     theta[0] = atan2(prev_v[2],prev_v[1]);
@@ -389,25 +450,45 @@ void GY80::v_gyro_update(float* prev_v, float* curr_v){
 
     //find current angle
     for(int axis = 0; axis<3; axis++){
-        theta[axis] -= this->omega[axis] * (float)(this->timeSampling) / 1000000.0f;
+        theta[axis] -= this->omega[axis] * (float)(us_ticker_read() - timer[axis]) / 1000000.0f;
+        timer[axis] = us_ticker_read();
     }
 
     //find curr_v
-    float sThetaY = sin(theta[1]); float tThetaZ = tan(theta[2]);
-    curr_v[0] = sThetaY / (sqrt(1 + tThetaZ * tThetaZ * sThetaY * sThetaY));
-    float sThetaZ = sin(theta[2]); float tThetaX = tan(theta[0]);
-    curr_v[1] = sThetaZ / (sqrt(1 + tThetaX * tThetaX * sThetaZ * sThetaZ));
-    curr_v[2] = sqrt(1 - curr_v[0] * curr_v[0] - curr_v[1] * curr_v[1]);
-    if(sin(theta[0]) < 0.0f) curr_v[2] = - curr_v[2];
+    if(fabs(fabs(theta[2]) - (M_PI / 2.0f)) > ERROR_TOL){ //tan z aman
+        float sThetaY = sin(theta[1]); float tThetaZ = tan(theta[2]);
+        curr_v[0] = sThetaY / (sqrt(1.0f + tThetaZ * tThetaZ * sThetaY * sThetaY));
+        if(fabs(fabs(theta[0]) - (M_PI / 2.0f)) > ERROR_TOL){ //tan x aman
+            float sThetaZ = sin(theta[2]); float tThetaX = tan(theta[0]);
+            curr_v[1] = sThetaZ / (sqrt(1.0f + tThetaX * tThetaX * sThetaZ * sThetaZ));
+            curr_v[2] = sqrt(1.0f - curr_v[0] * curr_v[0] - curr_v[1] * curr_v[1]);
+            if(sin(theta[0]) < 0.0f) curr_v[2] = - curr_v[2];
+        } else{ //tan y aman
+            float sThetaX = sin(theta[0]); float tThetaY = tan(theta[1]);
+            curr_v[2] = sThetaX / (sqrt(1.0f + tThetaY * tThetaY * sThetaX * sThetaX));
+            curr_v[1] = sqrt(1.0f - curr_v[0] * curr_v[0] - curr_v[2] * curr_v[2]);
+            if(sin(theta[2]) < 0.0f) curr_v[1] = - curr_v[1];
+        }
+    } else{ //tan x & y aman
+            float sThetaZ = sin(theta[2]); float tThetaX = tan(theta[0]);
+            curr_v[1] = sThetaZ / (sqrt(1.0f + tThetaX * tThetaX * sThetaZ * sThetaZ));
+            float sThetaX = sin(theta[0]); float tThetaY = tan(theta[1]);
+            curr_v[2] = sThetaX / (sqrt(1.0f + tThetaY * tThetaY * sThetaX * sThetaX));
+            curr_v[0] = sqrt(1.0f - curr_v[1] * curr_v[1] - curr_v[2] * curr_v[2]);
+            if(sin(theta[1]) < 0.0f) curr_v[0] = - curr_v[0];
+    }
+
+    //just in case
+    this->v_unit(curr_v, curr_v);
 }
 
-void GY80::find_roll_pitch_yaw(){
+void GY80::find_roll_pitch_yaw(float* v_north, float* v_up, float* v_compass){
     //find world unit vector in respect to b coordinate
     float xw[3], yw[3], zw[3];
     for(int axis = 0; axis<3; axis++){ //zw = up
-        zw[axis] = this->up[axis];
+        zw[axis] = v_up[axis];
     }
-    this->v_cross_p(this->up, this->north, yw);//find yw
+    this->v_cross_p(v_up, v_north, yw);//find yw
     this->v_unit(yw, yw);
     this->v_cross_p(yw, zw, xw); //find xw
     
@@ -427,7 +508,7 @@ void GY80::find_roll_pitch_yaw(){
     if(roll < 0.0f) roll += 2.0f * M_PI;
     
     //output
-    this->compass[0] = roll * RAD2DEG;
-    this->compass[1] = pitch * RAD2DEG;
-    this->compass[2] = yaw * RAD2DEG;
+    v_compass[0] = roll * RAD2DEG;
+    v_compass[1] = pitch * RAD2DEG;
+    v_compass[2] = yaw * RAD2DEG;
 }
