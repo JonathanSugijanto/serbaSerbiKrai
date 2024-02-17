@@ -2,7 +2,7 @@
 #include "GY80/GY80.h"
 
 #define timeSampling 100000
-#define timeSamp 15000
+#define timeSamp 1250
 
 GY80 gy(PB_9,PB_8,timeSamp);
 
@@ -22,13 +22,16 @@ FileHandle *mbed::mbed_override_console(int fd){
     return &serial_port;
 }
 
+int16_t gyro_raw[3];
+
 int main()
 {
     // gy.set_b_verbose(true);
     while(1){
         if(us_ticker_read() - timer1 > timeSampling){
             // gy.Compass_rel(Angle);
-            gy.Compass(Angle);
+            // gy.Compass(Angle);
+            gy.simple_Compass(Angle);
             // gy.ex_Compass(Speed, Angle);
             // gy.ex1_Compass(Angle);
             // gy.Compass_No_Gyro(Angle);
@@ -37,6 +40,8 @@ int main()
             // printf("RollG: %.1f RollM: %.1f PitchG: %.1f PitchM: %.1f YawG: %.1f YawM: %.1f", Angle[0], Angle1[0], Angle[1], Angle1[1], Angle[2], Angle1[2]);
 
             // gy.Read_Magn(Gyro);
+            // gy.Read_Raw_Gyro(gyro_raw);
+            // printf("%d %d %d", gyro_raw[0], gyro_raw[1], gyro_raw[2]);
 
             // gy.Read_Gyro(Gyro);
             // for(int i = 0; i<3 ; i++){
@@ -55,7 +60,8 @@ int main()
         if(us_ticker_read() - timer2 > timeSamp){
             // gy.ex_Sampling();
             // gy.ex1_Sampling();
-            gy.Sampling();
+            // gy.Sampling();
+            gy.simple_Sampling();
             timer2 = us_ticker_read();
         }
     }

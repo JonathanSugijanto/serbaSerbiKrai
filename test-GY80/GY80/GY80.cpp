@@ -52,6 +52,11 @@ void GY80::set_Angle(float new_angle){
         }
     }
 
+    this->q[0] = 1.0f;
+    for(int i = 1; i<4; i++){
+        this->q[i] = 0.0f;
+    }
+
     this->zero_angle_rel = this->compass[0] + new_angle;
 }
 
@@ -169,6 +174,39 @@ void GY80::Sampling(){
     //normalisasi vektor
     this->v_unit(this->north,this->north);
     this->v_unit(this->up,this->up);
+}
+
+void GY80::simple_Sampling(){
+    //gyroscope contribution
+    this->Read_Gyro(this->omega);
+    // float theta = this->v_length(this->omega) * (float)(this->timeSampling) / 1000000.0f;
+    // this->v_unit(this->omega, this->omega);
+    // float q_updater[4];
+    // q_updater[0] = cos(theta / 2.0f);
+    // float sHalfTheta = sin(theta / 2.0f);
+    // for(int index = 0; index < 3; index++){
+    //     q_updater[index + 1] = this->omega[index] * sHalfTheta;
+    // }
+    float q_omega[4];
+    q_omega[0] = 0.0f;
+    for(int i = 0; i<3; i++){
+        q_omega[i+1] = this->omega[i];
+    }
+    this->q_multiply(this->q, q_omega, q_omega);
+    for(int i = 0; i<4; i++){
+        this->q[i] += 0.5f * q_omega[i] * (float)(this->timeSampling) / 1000000.0f;
+    }
+
+    // Normalise quaternion
+    float norm = sqrt(this->q[0] * this->q[0] + this->q[1] * this->q[1] + this->q[2] * this->q[2] + this->q[3] * this->q[3]);
+    norm = 1.0f / norm;
+    for(int i = 0; i<4; i++){
+        this->q[i] *= norm;
+    }
+}
+
+void GY80::simple_Compass(float* comp){
+    this->q_to_rpy(this->q, comp);
 }
 
 void GY80::ex_Sampling(){
@@ -436,8 +474,10 @@ float GY80::v_length(float* vector){
 
 void GY80::v_unit(float* vector, float* u_vector){
     float length = this->v_length(vector);
-    for(int axis = 0; axis<3; axis++){
-        u_vector[axis] = vector[axis] / length;
+    if(length > 0){
+        for(int axis = 0; axis<3; axis++){
+            u_vector[axis] = vector[axis] / length;
+        }
     }
 }
 
@@ -511,4 +551,51 @@ void GY80::find_roll_pitch_yaw(float* v_north, float* v_up, float* v_compass){
     v_compass[0] = roll * RAD2DEG;
     v_compass[1] = pitch * RAD2DEG;
     v_compass[2] = yaw * RAD2DEG;
+}
+
+void GY80::q_multiply(float* firstQ, float* secondQ, float* outputQ){
+    float output[4];
+    output[0] = firstQ[0] * secondQ[0] - firstQ[1] * secondQ[1] - firstQ[2] * secondQ[2] - firstQ[3] * secondQ[3];
+    output[1] = firstQ[0] * secondQ[1] + firstQ[1] * secondQ[0] + firstQ[2] * secondQ[3] - firstQ[3] * secondQ[2];
+    output[2] = firstQ[0] * secondQ[2] - firstQ[1] * secondQ[3] + firstQ[2] * secondQ[0] + firstQ[3] * secondQ[1];
+    output[3] = firstQ[0] * secondQ[3] + firstQ[1] * secondQ[2] - firstQ[2] * secondQ[1] + firstQ[3] * secondQ[0];
+    for(int index = 0; index < 4; index++){
+        outputQ[index] = output[index];
+    }
+}
+
+void GY80::q_to_ypr(float* inputQ, float* outputYPR){
+    outputYPR[0] = atan2(2.0f * (this->q[1] * this->q[2] + this->q[0] * this->q[3]), this->q[0] * this->q[0] + this->q[1] * this->q[1] - this->q[2] * this->q[2] - this->q[3] * this->q[3]) * RAD2DEG;   
+    outputYPR[1] = -asin(2.0f * (this->q[1] * this->q[3] - this->q[0] * this->q[2])) * RAD2DEG;
+    outputYPR[2]  = atan2(2.0f * (this->q[0] * this->q[1] + this->q[2] * this->q[3]), this->q[0] * this->q[0] - this->q[1] * this->q[1] - this->q[2] * this->q[2] + this->q[3] * this->q[3]) * RAD2DEG;
+    // yaw   -= 13.8f; // Declination at Danville, California is 13 degrees 48 minutes and 47 seconds on 2014-04-04
+
+}
+
+void GY80::q_to_rpy(float* inputQ, float* outputRPY){
+    float sinr_cosp = 2 * (inputQ[0] * inputQ[1] + inputQ[2] * inputQ[3]);
+    float cosr_cosp = 1 - 2 * (inputQ[1] * inputQ[1] + inputQ[2] * inputQ[2]);
+    outputRPY[0] = atan2(sinr_cosp, cosr_cosp) * RAD2DEG;   
+
+    float sinp = sqrt(1 + 2 * (inputQ[0] * inputQ[2] - inputQ[1] * inputQ[3]));
+    float cosp = sqrt(1 - 2 * (inputQ[0] * inputQ[2] - inputQ[1] * inputQ[3]));
+    outputRPY[1] = (2.0f * atan2(sinp, cosp) - M_PI / 2.0f) * RAD2DEG;
+
+    float siny_cosp = 2 * (inputQ[0] * inputQ[3] + inputQ[1] * inputQ[2]);
+    float cosy_cosp = 1 - 2 * (inputQ[2] * inputQ[2] + inputQ[3] * inputQ[3]);
+    outputRPY[2]  = atan2(siny_cosp, cosy_cosp) * RAD2DEG;
+}
+
+void GY80::RPY_to_q(float* inputRPY, float* outputQ){
+    float cr = cos(inputRPY[0] * 0.5);
+    float sr = sin(inputRPY[0] * 0.5);
+    float cp = cos(inputRPY[1] * 0.5);
+    float sp = sin(inputRPY[1] * 0.5);
+    float cy = cos(inputRPY[2] * 0.5);
+    float sy = sin(inputRPY[2] * 0.5);
+
+    outputQ[0] = cr * cp * cy + sr * sp * sy;
+    outputQ[1] = sr * cp * cy - cr * sp * sy;
+    outputQ[2] = cr * sp * cy + sr * cp * sy;
+    outputQ[3] = cr * cp * sy - sr * sp * cy;
 }

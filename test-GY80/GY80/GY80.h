@@ -42,7 +42,7 @@
 #define SCL PB_8
 #define SDA PB_9
 
-#define GYRO_WEIGHT 0.8f //gyro to magnetometer-accelerometer weighted average ratio
+#define GYRO_WEIGHT 1.0f //gyro to magnetometer-accelerometer weighted average ratio //makin gede ratio, makin presisi, tapi makin gk akurat
 #define AVG_COUNT 5
 
 #define ACCEL_ADDRESS (0xA6) // 0x53 = 0xA6 / 2
@@ -87,9 +87,9 @@
 
 // Gyroscope
 // "gyro x,y,z (current/average) = .../OFFSET_X  .../OFFSET_Y  .../OFFSET_Z
-#define GYRO_X_OFFSET (-27.39333333f)
-#define GYRO_Y_OFFSET (34.6f)
-#define GYRO_Z_OFFSET (4.303333333f)
+#define GYRO_X_OFFSET (-24.97683398f)
+#define GYRO_Y_OFFSET (35.00965251f)
+#define GYRO_Z_OFFSET (2.272200772f)
 
 //*****************************************************************************/
 
@@ -122,8 +122,8 @@
 
 // Gyro gain (conversion from raw to degree per seconds)
 #define GYRO_GAIN 0.07f //based on datasheet, or 0.061035156f based on max min range
-#define GYRO_GAIN_X 0.07f //X axis Gyro gain
-#define GYRO_GAIN_Y 0.07f //Y axis Gyro gain
+#define GYRO_GAIN_X 0.175f //X axis Gyro gain
+#define GYRO_GAIN_Y 0.175f //Y axis Gyro gain
 #define GYRO_GAIN_Z 0.175f //Z axis Gyro gain (0.175?)
 
 #define DEG2RAD 0.01745329252f  // *pi/180
@@ -205,6 +205,9 @@ public:
     void ex1_Sampling();
     void ex1_Compass(float* comp);
 
+    void simple_Sampling();
+    void simple_Compass(float* comp);
+
     /**Compass function version 1
      * Assume acceleration is always vertical down
      * Combining compass and accelerometer data, doesn't need sampling
@@ -258,6 +261,7 @@ private:
     float compass[3];
 
     float omega[3];
+    float q[4];
     float up1[3], north1[3]; //unit vector of up and north in respect to module using accelerometer-magnetometer
     float up2[3], north2[3]; //unit vector of up and north in respect to module using gyroscope
     float up[3], north[3]; //unit vector of up and north in respect to module
@@ -279,6 +283,11 @@ private:
     void v_unit(float* vector, float* u_vector);
     void v_gyro_update(float* prev_v, float* curr_v, uint32_t* timer);
     void find_roll_pitch_yaw(float* v_north, float* v_up, float* v_compass);
+
+    void q_multiply(float* firstQ, float* secondQ, float* outputQ);
+    void q_to_ypr(float* inputQ, float* outputYPR);
+    void q_to_rpy(float* inputQ, float* outputRPY);
+    void RPY_to_q(float* inputRPY, float* outputQ);
 };
 
 #endif
