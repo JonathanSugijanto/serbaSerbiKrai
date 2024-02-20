@@ -9,6 +9,8 @@ FileHandle *mbed::mbed_override_console(int fd){
 
 #define cmps_SDA PB_9 //SDA 1
 #define cmps_SCL PB_8 //SCL 1
+// #define cmps_SDA PC_9 //master board
+// #define cmps_SCL PA_8 //master board
 // #define cmps_SDA PB_3 //SDA 2
 // #define cmps_SCL PB_10 //SCL 2
 #define cmps_ADD 0xC0
@@ -30,7 +32,8 @@ int main()
         if ((us_ticker_read() - curr) > 50000) // batas us_ticker di blue pill
         {
             // led1 = !led1;
-            cmps.compassUpdateValue();
+            // cmps.compassUpdateValue();
+            // printf("hello %c\n",cmps.readSoftwareRevision());
             printf("cmpsVal: %.2f Angle: %d Pitch: %d Roll: %d \n ", cmps.compassValue(), cmps.getAngle(), cmps.getPitch(), cmps.getRoll());
             curr = us_ticker_read();
         }
